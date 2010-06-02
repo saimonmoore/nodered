@@ -1,3 +1,6 @@
+
+io.setPath('/socketio/client/');
+
 function NodeRedClient() {
   this.next_id  = 0;
   this.pending = {};  // id => function
@@ -7,11 +10,34 @@ function NodeRedClient() {
   // The server can be down for about 4 minutes total before we give up.
 
   this.reconnect_attempts = 0;
-  this.max_reconnect_attempts = 7; 
+  this.max_reconnect_attempts = 7;
 }
 
+
+
+function message(obj){
+  var el = document.createElement('p');
+  if ('announcement' in obj) el.innerHTML = '<em>' + obj.announcement;
+  else if ('message' in obj) el.innerHTML = '<b>' + obj.message[0] + ':</b> ' + obj.message[1];
+  if (el) {
+    document.getElementById('chat').appendChild(el);
+    document.getElementById('chat').scrollTop = 1000000;
+  }
+}
+
+function send(){
+  var val = document.getElementById('text').value;
+  socket.send(val);
+  message({ message: ['you', val] });
+  document.getElementById('text').value = '';
+}
+
+
+
+
+
 NodeRedClient.prototype.connect = function (host, port) {
-  if (this.ws || this.connecting) 
+  if (this.ws || this.connecting)
     return;
 
   console.log('connecting to ' + host + ':' + port);
@@ -21,15 +47,13 @@ NodeRedClient.prototype.connect = function (host, port) {
 
   var self = this;
 
-  ws = new WebSocket("ws://" + (host || 'localhost') + ":" + (port || 8081)); 
-
-  ws.onopen = function() {
+  ws = new io.Socket((host || 'localhost'), {host: (host || 'localhost'), rememberTransport: false, port: (port || 8081)});
+  ws.addEvent('connect', function(){
     console.log('connected');
-
     self.ws = ws;
-    self.add_extension_support('metadata');     // must always be enabled. 
+    self.add_extension_support('metadata');     // must always be enabled.
 
-    if (self.on_connected) 
+    if (self.on_connected)
       self.on_connected();
 
     self.connecting = false;
@@ -41,15 +65,16 @@ NodeRedClient.prototype.connect = function (host, port) {
     self.heartbeat = setInterval(function () {
       if (self.ws) self.ping();
     }, 30*1000);
-  };
+  });
 
-  ws.onmessage = function (event) {
-    try { 
-      var obj = JSON.parse(event.data); 
+  ws.addEvent('message', function(data){
+    console.log('message received: ' + data);
+    try {
+      var obj = JSON.parse(data);
     } catch (e) {
     }
 
-    if (!obj || !(obj instanceof Object)) 
+    if (!obj || !(obj instanceof Object))
       throw "malformed message";
 
     if (obj.notice) {
@@ -57,15 +82,15 @@ NodeRedClient.prototype.connect = function (host, port) {
         self.expected_close = true;
         self.ws.close();
       }
-      if (self.on_notice) 
+      if (self.on_notice)
         self.on_notice(obj.notice);
     } else if (obj.id !== undefined && self.pending[obj.id]) {
       self.pending[obj.id](obj.error || null, obj.body || null);
       delete self.pending[obj.id];
     }
-  };
+  });
 
-  ws.onclose = function() {
+  ws.addEvent('disconnect', function(){
     console.log('not connected ' + (!self.expected_close ? ' (unexpected)' : ''));
 
     if (self.heartbeat !== undefined)
@@ -76,7 +101,7 @@ NodeRedClient.prototype.connect = function (host, port) {
     self.ws = null;
     delete self.ws;
 
-    if (self.on_disconnected) 
+    if (self.on_disconnected)
       self.on_disconnected();
 
     if (!self.expected_close && ++self.reconnect_attempts < self.max_reconnect_attempts) {
@@ -88,7 +113,10 @@ NodeRedClient.prototype.connect = function (host, port) {
         self.connect(host, port);
       }, timeout);
     }
-  };
+  });
+
+
+  ws.connect();
 }
 
 NodeRedClient.prototype.add_extension_support = function (ext_name) {
@@ -100,13 +128,13 @@ NodeRedClient.prototype.add_extension_support = function (ext_name) {
       var callback = arguments[arguments.length - 1];
       if (typeof callback == "function") arg_count--;
 
-      var request = { 
-        id: this.next_id++, 
-        cmd: command_name, 
+      var request = {
+        id: this.next_id++,
+        cmd: command_name,
         body: []
       };
 
-      for (var i=0; i < arg_count; ++i) 
+      for (var i=0; i < arg_count; ++i)
         request.body.push(arguments[i]);
 
       if (request.body.length == 0)
@@ -128,10 +156,10 @@ NodeRedClient.prototype.add_extension_support = function (ext_name) {
 
   var to_add = extension_commands[ext_name];
 
-  if (!to_add) 
+  if (!to_add)
     alert("Internal error! I don't know how to add support for: " + ext_name);
-  else 
-    for (var i=0; i<to_add.length; ++i) 
+  else
+    for (var i=0; i<to_add.length; ++i)
       NodeRedClient.prototype[to_add[i].toLowerCase()] = make_requester(to_add[i]);
 };
 

@@ -1,0 +1,35 @@
+body {
+  background-color: #fff;
+  color: #000;
+}
+
+#src, #content, input, textarea {
+  width: 95%;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+#action {
+  display: block;
+  margin-top: 1em;
+}
+
+#output {
+  background-color: #444;
+  color: #fa0;
+  display: block;
+  overflow: hidden;
+  border-radius: 10px;
+  border-color: #000;
+  padding: 0.5em;
+}
+
+#src {
+  padding: 0.25em;
+  color: #66f;
+  font-size: 8pt;
+  text-align: center;
+  margin-top: 1em;
+  display: block;
+}
+

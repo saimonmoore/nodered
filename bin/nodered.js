@@ -13,7 +13,7 @@ redis.debugMode = process.env["NODERED_DEBUG"] || false;
 // NodeRed provides a framework for servers but the real meat is in the
 // extensions.  So, NodeRed gets out of their way by not hiding anything.
 
-our = { 
+our = {
   version: "0.5.4",
   redis: {},
   servers: [],
@@ -33,8 +33,8 @@ function die(why) {
   process.exit(1);
 }
 
-var config_path = process.argv[2] || 
-                  process.env['NODERED_CONFIG_PATH'] || 
+var config_path = process.argv[2] ||
+                  process.env['NODERED_CONFIG_PATH'] ||
                   __dirname + '/../etc/config.js';
 
 var sandbox = {};
@@ -49,25 +49,26 @@ var config = sandbox.configuration;
 our.node_name = (config.node_name || '').trim().toLowerCase().replace(/\s/g, '_');
 if (!our.node_name) die("a node name is required");
 
-our.redis.ip = config.redis.ip || '127.0.0.1'; 
+our.redis.ip = config.redis.ip || '127.0.0.1';
 our.redis.port = config.redis.port || 6379;
 our.redis.db = config.redis.db === undefined ? 1 : config.redis.db;
 our.redis.client = redis.createClient(our.redis.port, our.redis.ip);
 
-var server_creators = { 
-  tcp: require("../lib/tcp_server").create, 
-  ws: require("../lib/websockets_server").create
+var server_creators = {
+  tcp: "../lib/tcp_server",
+  ws: "../lib/websockets_server",
+  sio: "../lib/socket.io_server"
 };
 
 config.servers.forEach(function (t) {
   try {
-    our.servers.push(server_creators[t.type](t.ip, t.port));
+    our.servers.push(require(server_creators[t.type]).create(t.ip, t.port));
   } catch (e) {
-    die("failed to create server! " + e);
+    die("failed to create server! " + e + ' trace: ' + e.stack);
   }
 });
 
-if (our.servers.length == 0) 
+if (our.servers.length == 0)
   die("no servers enabled!");
 
 our.max_request_size = config.max_request_size || 50240;
@@ -83,13 +84,13 @@ for (var i=0, n=config.extensions.length; i<n; ++i) {
       if (!mod) die("no such nodejs module @ " + ext_spec.module);
 
       if (typeof mod.init_extension != "function")
-        die("invalid extension module " + ext_spec.name + 
+        die("invalid extension module " + ext_spec.name +
             ": missing/invalid init_extension function");
 
-      our.extensions.push({ 
-        name: ext_spec.name, 
-        module: mod, 
-        options: ext_spec.options || {} 
+      our.extensions.push({
+        name: ext_spec.name,
+        module: mod,
+        options: ext_spec.options || {}
       });
       break;
 
@@ -108,7 +109,7 @@ flow.exec(
   function (err, info) {
     if (err) throw new Error(err);
 
-    sys.log("redis v" + info.redis_version + " @ " + 
+    sys.log("redis v" + info.redis_version + " @ " +
             our.redis.ip + ":" + our.redis.port + "/" + our.redis.db);
 
     our.redis.version = info.redis_version;
@@ -139,7 +140,7 @@ flow.exec(
     our.redis.client.hset(our.metadata_key, 'up_since', our.up_since, this.MULTI());
 
     var servers = [];
-    config.servers.forEach(function (srv) { 
+    config.servers.forEach(function (srv) {
       servers.push(srv.type + '://' + srv.ip + ':' + srv.port);
     });
     our.redis.client.hset(our.metadata_key, 'servers', servers.join(','), this.MULTI());
@@ -170,7 +171,7 @@ function cleanup() {
       our.redis.client.zremrangebyscore('nr:cluster', our.node_id, our.node_id, this);
     },
     function rm_our_metadata(err, reply) {
-      if (our.metadata_key) 
+      if (our.metadata_key)
         our.redis.client.del(our.metadata_key, this);
       else
         this();
@@ -179,7 +180,7 @@ function cleanup() {
       var multi = this.MULTI;
       for (var i=0; i<our.extensions.length; ++i) {
         var ext_spec = our.extensions[i];
-        if (typeof ext_spec.module.deinit_extension == "function") 
+        if (typeof ext_spec.module.deinit_extension == "function")
           ext_spec.module.deinit_extension(our, multi());
       }
     },
