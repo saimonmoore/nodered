@@ -1,6 +1,6 @@
 # NodeRed PUBSUB over Socket.IO Demo
 
-1. cd lib/vendor/socketio-node/
+1. git submodule init
 1. git submodule update --init --recursive
 1. Launch Redis.
 1. Launch NodeRed with a `sio` server listening on port 8081.
