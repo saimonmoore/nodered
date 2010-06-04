@@ -1,5 +1,5 @@
 
-io.setPath('/socketio/client/');
+io.setPath('/nodered/lib/vendor/socket.io-node/test/client/');
 
 function NodeRedClient() {
   this.next_id  = 0;
