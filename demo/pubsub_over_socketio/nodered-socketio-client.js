@@ -151,6 +151,7 @@ NodeRedClient.prototype.add_extension_support = function (ext_name) {
     basic:    [ 'QUIT', 'PING' ],
     metadata: [ 'LOCAL', 'CLUSTER' ],
     pubsub:   [ 'LIST', 'SUBSCRIBE', 'UNSUBSCRIBE', 'PUBLISH' ],
+    pubpersist: [],
     nickname: [ 'NICKNAME' ]
   };
 
